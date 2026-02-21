@@ -15,8 +15,23 @@ export default function Home() {
     new_recipient: true,
     high_velocity: true,
     replay_attempt: false,
-    is_attack: true,
+    contract_param_tamper: false,
   });
+
+  const [executionJson, setExecutionJson] = useState(
+    JSON.stringify(
+      {
+        contract_type: "ESCROW",
+        method: "release",
+        params: {
+          recipient: "0xabc",
+          amountUsd: 250000,
+        },
+      },
+      null,
+      2
+    )
+  );
 
   async function runSimulation() {
     if (!API) {
@@ -26,27 +41,28 @@ export default function Home() {
 
     setLoading(true);
 
-    const res = await fetch(`${API}/sandbox/evaluate`, {
+    const execution = JSON.parse(executionJson);
+
+    const res = await fetch(`${API}/lab/run`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         intent: { amountUsd: intentAmount },
         scenario,
+        execution,
       }),
     });
 
     const data = await res.json();
     setResult(data);
-
     await loadDashboard();
-
     setLoading(false);
   }
 
   async function loadDashboard() {
     if (!API) return;
 
-    const res = await fetch(`${API}/sandbox/dashboard`);
+    const res = await fetch(`${API}/lab/dashboard`);
     const data = await res.json();
     setDashboard(data);
   }
@@ -56,122 +72,166 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-black text-white p-10">
-      <h1 className="text-4xl font-bold mb-8">
-        CryptoCardia Sandbox
-      </h1>
+    <main className="min-h-screen bg-[#0B0F14] text-white font-mono p-8">
 
-      {/* Intent Builder */}
-      <div className="border border-gray-800 p-6 rounded mb-8">
-        <h2 className="text-xl font-semibold mb-4">
-          Intent Builder
-        </h2>
-
-        <label className="block mb-2">
-          Amount (USD)
-        </label>
-
-        <input
-          type="number"
-          value={intentAmount}
-          onChange={(e) => setIntentAmount(Number(e.target.value))}
-          className="bg-gray-900 border border-gray-700 p-2 rounded w-64 mb-6"
-        />
-
-        <h3 className="text-lg font-semibold mb-2">
-          Scenario Toggles
-        </h3>
-
-        <div className="space-y-2">
-          {Object.keys(scenario).map((key) => (
-            <label key={key} className="flex items-center space-x-3">
-              <input
-                type="checkbox"
-                checked={(scenario as any)[key]}
-                onChange={(e) =>
-                  setScenario({
-                    ...scenario,
-                    [key]: e.target.checked,
-                  })
-                }
-              />
-              <span>{key}</span>
-            </label>
-          ))}
-        </div>
-
-        <button
-          onClick={runSimulation}
-          disabled={loading}
-          className="mt-6 bg-white text-black px-6 py-3 rounded font-semibold"
-        >
-          {loading ? "Running..." : "Run Attack Simulation"}
-        </button>
+      {/* Top Bar */}
+      <div className="mb-10 border-b border-[#1F2933] pb-4">
+        <h1 className="text-3xl text-[#00FF9C]">
+          CRYPTOCARDIA // EXECUTION GOVERNANCE LAB
+        </h1>
+        <p className="text-sm text-[#8A9BA8] mt-2">
+          Mode: SANDBOX | Policy: DEFAULT_V1 | API: LIVE
+        </p>
       </div>
 
-      {/* Decision Output */}
-      {result && (
-        <div className="border border-gray-800 p-6 rounded mb-8">
-          <h2 className="text-xl font-semibold mb-4">
-            Decision Outcome
+      <div className="grid grid-cols-2 gap-8">
+
+        {/* Attack Surface */}
+        <div className="bg-[#11161D] p-6 border border-[#1F2933]">
+          <h2 className="text-xl text-[#00FF9C] mb-6">
+            Attack Surface
           </h2>
 
-          <p>
-            <strong>Decision:</strong> {result.decision}
-          </p>
+          <label className="block mb-2">Intent Amount (USD)</label>
+          <input
+            type="number"
+            value={intentAmount}
+            onChange={(e) => setIntentAmount(Number(e.target.value))}
+            className="bg-black border border-[#1F2933] p-2 w-full mb-6"
+          />
 
-          <p>
-            <strong>Risk:</strong> {result.risk}
-          </p>
+          <h3 className="mb-3 text-[#8A9BA8]">Scenario Toggles</h3>
 
-          <p>
-            <strong>Reasons:</strong>{" "}
-            {result.reasons?.join(", ")}
-          </p>
+          <div className="space-y-2">
+            {Object.keys(scenario).map((key) => (
+              <label key={key} className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  checked={(scenario as any)[key]}
+                  onChange={(e) =>
+                    setScenario({
+                      ...scenario,
+                      [key]: e.target.checked,
+                    })
+                  }
+                />
+                <span>{key}</span>
+              </label>
+            ))}
+          </div>
 
-          <div className="mt-4 border-t border-gray-700 pt-4">
-            <h3 className="text-lg font-semibold mb-2">
-              Cost-to-Outcome Ledger
-            </h3>
+          <button
+            onClick={runSimulation}
+            disabled={loading}
+            className="mt-6 bg-[#00FF9C] text-black px-6 py-3 font-bold"
+          >
+            {loading ? "Running..." : "EXECUTE"}
+          </button>
+        </div>
+
+        {/* Execution Payload */}
+        <div className="bg-[#11161D] p-6 border border-[#1F2933]">
+          <h2 className="text-xl text-[#00FF9C] mb-6">
+            Execution Payload
+          </h2>
+
+          <textarea
+            value={executionJson}
+            onChange={(e) => setExecutionJson(e.target.value)}
+            className="w-full h-80 bg-black border border-[#1F2933] p-4 text-sm"
+          />
+        </div>
+      </div>
+
+      {/* Decision Panel */}
+      {result && (
+        <div className="mt-10 grid grid-cols-2 gap-8">
+
+          <div className="bg-[#11161D] p-6 border border-[#1F2933]">
+            <h2 className="text-xl text-[#00FF9C] mb-4">
+              Governance Decision
+            </h2>
 
             <p>
-              Attempted Value: $
-              {result.ledger.attempted_value_usd}
+              <strong>Baseline:</strong>{" "}
+              {result.baseline.decision}
+            </p>
+
+            <p className="mt-2">
+              <strong>Governed:</strong>{" "}
+              <span
+                className={
+                  result.governed.decision === "DENY"
+                    ? "text-red-500"
+                    : result.governed.decision === "STEP_UP"
+                    ? "text-yellow-400"
+                    : "text-green-400"
+                }
+              >
+                {result.governed.decision}
+              </span>
+            </p>
+
+            <p className="mt-2">
+              <strong>Risk:</strong> {result.governed.risk}
+            </p>
+
+            <p className="mt-2">
+              <strong>Reasons:</strong>{" "}
+              {result.governed.reasons?.join(", ")}
+            </p>
+
+            <div className="mt-6 text-xs text-[#8A9BA8]">
+              <p>
+                Expected Hash: {result.execution.expectedExecHash}
+              </p>
+              <p>
+                Actual Hash: {result.execution.actualExecHash}
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-[#11161D] p-6 border border-[#1F2933]">
+            <h2 className="text-xl text-[#00FF9C] mb-4">
+              Economic Impact
+            </h2>
+
+            <p>
+              Attempted: ${result.economics.attemptedValue}
             </p>
 
             <p>
-              Prevented Loss: $
-              {result.ledger.prevented_loss_usd}
+              Prevented: ${result.economics.preventedLoss}
             </p>
 
             <p>
-              Friction Cost: $
-              {result.ledger.friction_cost_usd}
+              Friction: ${result.economics.frictionCost}
             </p>
 
-            <p className="font-bold">
+            <p className="mt-4 font-bold text-[#00FF9C]">
               Net Security Value: $
-              {result.ledger.net_security_value_usd}
+              {result.economics.netSecurityValue}
             </p>
           </div>
         </div>
       )}
 
-      {/* Cumulative Dashboard */}
+      {/* Dashboard */}
       {dashboard && (
-        <div className="border border-gray-800 p-6 rounded">
-          <h2 className="text-xl font-semibold mb-4">
-            Cumulative Sandbox Ledger
+        <div className="mt-10 bg-[#11161D] p-6 border border-[#1F2933]">
+          <h2 className="text-xl text-[#00FF9C] mb-4">
+            Cumulative Ledger
           </h2>
 
-          <p>Total Runs: {dashboard.total_runs}</p>
-          <p>Total Attempted: ${dashboard.total_attempted}</p>
-          <p>Total Prevented: ${dashboard.total_prevented}</p>
-          <p>Total Friction: ${dashboard.total_friction}</p>
-
-          <p className="font-bold mt-2">
-            Net Security Value: ${dashboard.net_security_value}
-          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <p>Total Runs: {dashboard.total_runs}</p>
+            <p>Total Attempted: ${dashboard.total_attempted}</p>
+            <p>Total Prevented: ${dashboard.total_prevented}</p>
+            <p>Total Friction: ${dashboard.total_friction}</p>
+            <p className="font-bold text-[#00FF9C]">
+              Net Security Value: ${dashboard.net_security_value}
+            </p>
+          </div>
         </div>
       )}
     </main>
